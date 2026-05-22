@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/herosms", "destination": "/api/herosms" },
+    { "source": "/api/payment", "destination": "/api/payment" },
+    { "source": "/api/qris", "destination": "/api/qris" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

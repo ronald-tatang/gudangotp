@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rumah OTP</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0f;
+  --card:#13131a;
+  --card2:#1a1a24;
+  --card3:#22222f;
+  --line:#ffffff0f;
+  --line2:#ffffff18;
+  --green:#22c55e;
+  --green-bg:#22c55e14;
+  --green-border:#22c55e30;
+  --blue:#3b82f6;
+  --blue-bg:#3b82f614;
+  --amber:#f59e0b;
+  --amber-bg:#f59e0b14;
+  --red:#ef4444;
+  --red-bg:#ef444414;
+  --text:#f1f1f5;
+  --text2:#a0a0b8;
+  --text3:#5a5a78;
+  --accent:#6366f1;
+  --accent2:#818cf8;
+  --r:16px;
+  --r2:12px;
+  --r3:10px;
+}
+
+html,body{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';
+  position:fixed;inset:0;z-index:0;
+  background:url('/icons/bg.jpg') center center / cover no-repeat;
+  opacity:0.18;
+  pointer-events:none;
+}
+.screen{position:relative;z-index:1}
+
+/* ── LAYOUT ── */
+.screen{max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative}
+
+/* ── STATUS BAR AREA ── */
+.topbar{
+  padding:16px 20px 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+  background:var(--bg);
+  border-bottom:1px solid var(--line);
+}
+.topbar-logo{display:flex;align-items:center;gap:10px}
+.logo-mark{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  box-shadow:0 0 0 1px #6366f130, 0 4px 12px #6366f140;
+}
+.logo-name{font-weight:800;font-size:.95rem;letter-spacing:-.02em}
+.logo-name span{color:var(--accent2)}
+.balance-pill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--card);border:1px solid var(--line2);
+  border-radius:100px;padding:6px 12px;
+  font-size:.75rem;font-weight:600;color:var(--text2);
+}
+.balance-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* ── SCROLL CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:0 0 100px;-webkit-overflow-scrolling:touch}
+.content::-webkit-scrollbar{display:none}
+
+/* ── TABS (bottom nav style) ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;
+  background:var(--card);
+  border-top:1px solid var(--line2);
+  display:flex;
+  padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+  z-index:100;
+  backdrop-filter:blur(20px);
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 4px;border:none;background:transparent;
+  color:var(--text3);font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:.65rem;font-weight:600;cursor:pointer;border-radius:var(--r3);
+  transition:color .15s;position:relative;
+}
+.nav-btn.active{color:var(--accent2)}
+.nav-icon{font-size:1.3rem;line-height:1}
+.nav-badge{
+  position:absolute;top:4px;right:calc(50% - 18px);
+  background:var(--red);color:#fff;
+  font-size:.55rem;font-weight:700;
+  min-width:16px;height:16px;border-radius:100px;
+  display:flex;align-items:center;justify-content:center;
+  padding:0 4px;
+}
+.nav-badge.hidden{display:none}
+
+.panel{display:none}.panel.active{display:block}
+
+/* ── SECTION HEADER ── */
+.sec-head{padding:20px 20px 12px}
+.sec-title{font-size:1.1rem;font-weight:800;letter-spacing:-.02em}
+.sec-sub{font-size:.78rem;color:var(--text2);margin-top:2px}
+
+/* ── FORM CARD ── */
+.form-card{margin:0 16px 12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+
+.form-row{
+  display:flex;flex-direction:column;
+  padding:14px 16px;border-bottom:1px solid var(--line);
+}
+.form-row:last-child{border-bottom:none}
+.form-label{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.form-select{
+  width:100%;background:var(--card2);
+  border:1px solid var(--line2);border-radius:var(--r3);
+  padding:11px 14px;color:var(--text);
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;font-weight:500;
+  outline:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0a0b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+  padding-right:36px;
+  transition:border-color .15s;
+}
+.form-select:focus{border-color:var(--accent)}
+.form-select option{background:#1a1a24}
+
+/* ── PRICE CARD ── */
+.price-result{
+  margin:0 16px 12px;
+  background:linear-gradient(135deg, #6366f10a, #8b5cf60a);
+  border:1px solid #6366f130;
+  border-radius:var(--r);
+  padding:16px;
+  display:none;
+  animation:fadeUp .25s ease;
+}
+.price-result.show{display:flex;align-items:center;justify-content:space-between}
+.price-tag{font-size:.68rem;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.price-amount{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;color:var(--text)}
+.price-info-right{text-align:right}
+.price-svc{font-size:.85rem;font-weight:700}
+.price-cnt{font-size:.72rem;color:var(--text2);margin-top:2px}
+.price-loading{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:.82rem}
+
+/* ── BUY BUTTON ── */
+.buy-wrap{padding:0 16px 4px}
+.btn-buy{
+  width:100%;padding:15px;border:none;border-radius:var(--r2);
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  color:#fff;font-family:'Plus Jakarta Sans',sans-serif;
+  font-weight:700;font-size:.95rem;cursor:pointer;
+  box-shadow:0 4px 20px #6366f140;
+  transition:opacity .15s, transform .1s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-buy:active:not(:disabled){transform:scale(.97)}
+.btn-buy:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
+
+/* ── ACTIVE CARDS ── */
+.active-wrap{padding:0 16px}
+.pull-refresh{
+  display:flex;justify-content:flex-end;padding:4px 0 10px;
+}
+.btn-refresh{
+  display:flex;align-items:center;gap:6px;
+  background:var(--card);border:1px solid var(--line2);
+  color:var(--text2);border-radius:100px;
+  padding:7px 14px;font-size:.75rem;font-weight:600;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;
+}
+
+.otp-card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);margin-bottom:12px;
+  overflow:hidden;
+  animation:fadeUp .3s ease;
+}
+.otp-card-head{
+  padding:14px 16px 12px;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  border-bottom:1px solid var(--line);
+}
+.otp-svc{font-weight:700;font-size:.9rem}
+.otp-cnt{font-size:.72rem;color:var(--text2);margin-top:2px}
+.status-chip{
+  font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:4px 10px;border-radius:100px;white-space:nowrap;
+}
+.chip-waiting{background:var(--amber-bg);color:var(--amber);border:1px solid #f59e0b30}
+.chip-received{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
+.chip-cancelled{background:var(--red-bg);color:var(--red);border:1px solid #ef444430}
+
+.otp-card-body{padding:14px 16px}
+.phone-block{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--card2);border-radius:var(--r3);
+  padding:10px 14px;margin-bottom:12px;
+}
+.phone-num{font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--blue)}
+.btn-copy-sm{
+  background:var(--card3);border:1px solid var(--line2);
+  color:var(--text2);border-radius:8px;padding:5px 12px;
+  font-size:.7rem;font-weight:600;cursor:pointer;
+  font-family:'Plus Jakarta Sans',sans-serif;
+  transition:all .15s;
+}
+.btn-copy-sm:active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.otp-block{
+  background:var(--card2);border-radius:var(--r3);
+  padding:16px;margin-bottom:12px;text-align:center;
+}
+.otp-waiting-text{
+  font-size:.82rem;font-weight:600;color:var(--amber);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.otp-digits{
+  font-size:2rem;font-weight:800;letter-spacing:.25em;color:var(--green);
+  text-shadow:0 0 20px #22c55e50;
+  font-variant-numeric:tabular-nums;
+}
+.otp-hint{font-size:.68rem;color:var(--text3);margin-top:4px}
+
+.otp-footer{
+  display:flex;align-items:center;justify-content:space-between;
+}
+.elapsed{font-size:.72rem;color:var(--text3)}
+.card-btns{display:flex;gap:8px}
+.btn-action{
+  padding:8px 16px;border-radius:var(--r3);border:1px solid var(--line2);
+  background:var(--card3);color:var(--text2);
+  font-family:'Plus Jakarta Sans',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;
+}
+.btn-action.danger{border-color:#ef444430;color:var(--red);background:var(--red-bg)}
+.btn-action.success{border-color:#22c55e30;color:var(--green);background:var(--green-bg)}
+
+.btn-copy-otp{
+  width:100%;margin-top:8px;padding:11px;border-radius:var(--r3);
+  border:1px solid var(--green-border);background:var(--green-bg);
+  color:var(--green);font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:.85rem;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+
+/* ── HISTORY ── */
+.history-wrap{padding:0 16px}
+.history-actions{display:flex;justify-content:flex-end;padding:4px 0 10px}
+.btn-clear{
+  background:transparent;border:none;
+  color:var(--red);font-size:.75rem;font-weight:600;
+  font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;
+}
+
+.history-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r2);
+  padding:14px 16px;margin-bottom:8px;
+  display:grid;grid-template-columns:1fr auto;gap:8px;
+  animation:fadeUp .2s ease;
+}
+.h-phone{font-size:.82rem;font-weight:700;color:var(--blue)}
+.h-svc{font-size:.72rem;color:var(--text2);margin-top:2px}
+.h-right{text-align:right}
+.h-otp{
+  font-size:1rem;font-weight:800;letter-spacing:.08em;color:var(--green);
+  cursor:pointer;font-variant-numeric:tabular-nums;
+}
+.h-time{font-size:.65rem;color:var(--text3);margin-top:3px}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;
+  padding:60px 20px;gap:12px;
+}
+.empty-icon{font-size:2.5rem;filter:grayscale(1);opacity:.3}
+.empty-title{font-size:.9rem;font-weight:700;color:var(--text2)}
+.empty-sub{font-size:.78rem;color:var(--text3);text-align:center;line-height:1.6}
+
+/* ── QRIS MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:#000000cc;backdrop-filter:blur(8px);
+  display:flex;align-items:flex-end;justify-content:center;
+  animation:fadeIn .2s ease;
+}
+.modal-overlay.hidden{display:none}
+.modal-sheet{
+  background:var(--card);
+  border-radius:20px 20px 0 0;
+  width:100%;max-width:430px;
+  padding:0 0 calc(24px + env(safe-area-inset-bottom));
+  animation:slideUp .3s cubic-bezier(.32,.72,0,1);
+  max-height:92vh;overflow-y:auto;
+}
+.modal-sheet::-webkit-scrollbar{display:none}
+.modal-handle{
+  width:36px;height:4px;border-radius:2px;background:var(--line2);
+  margin:12px auto 0;
+}
+.modal-head{padding:16px 20px 0}
+.modal-title{font-size:1rem;font-weight:800;letter-spacing:-.02em}
+.modal-sub{font-size:.78rem;color:var(--text2);margin-top:3px}
+
+.qr-frame{
+  margin:16px 20px;
+  background:#fff;border-radius:var(--r);
+  padding:20px;
+  display:flex;align-items:center;justify-content:center;
+  min-height:220px;
+}
+.qr-frame img{width:100%;max-width:200px;display:block}
+.qr-placeholder{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  color:#888;font-size:.78rem;text-align:center;
+}
+.qr-box-ph{
+  width:160px;height:160px;background:#f0f0f0;
+  border:2px dashed #ddd;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  color:#bbb;font-size:2rem;
+}
+
+.amount-block{
+  margin:0 20px 16px;
+  background:var(--card2);border-radius:var(--r2);
+  padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.amt-label{font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.amt-value{font-size:1.3rem;font-weight:800;letter-spacing:-.02em;color:var(--amber)}
+.expiry-block{text-align:right}
+.exp-label{font-size:.65rem;color:var(--text3)}
+.exp-val{font-size:.85rem;font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums}
+
+.pay-steps{margin:0 20px 16px;display:flex;flex-direction:column;gap:10px}
+.pay-step{display:flex;align-items:center;gap:12px;font-size:.82rem;color:var(--text2)}
+.step-n{
+  min-width:26px;height:26px;border-radius:50%;
+  background:var(--card2);border:1px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;color:var(--text);flex-shrink:0;
+}
+
+.pay-status{
+  text-align:center;font-size:.82rem;font-weight:600;
+  color:var(--text2);padding:0 20px 12px;min-height:28px;
+}
+
+.modal-btns{display:flex;gap:10px;padding:0 20px}
+.btn-modal-ghost{
+  flex:1;padding:13px;border-radius:var(--r2);
+  border:1px solid var(--line2);background:transparent;
+  color:var(--text2);font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:.88rem;font-weight:600;cursor:pointer;
+}
+.btn-modal-main{
+  flex:2;padding:13px;border-radius:var(--r2);
+  border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  color:#fff;font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:.88rem;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+
+/* ── TOAST ── */
+.toast-wrap{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);
+  width:calc(100% - 32px);max-width:398px;
+  display:flex;flex-direction:column;gap:8px;z-index:999;
+  pointer-events:none;
+}
+.toast{
+  background:var(--card2);
+  border:1px solid var(--line2);
+  border-radius:var(--r2);
+  padding:12px 16px;
+  font-size:.82rem;font-weight:600;
+  box-shadow:0 8px 32px #00000060;
+  animation:toastIn .25s cubic-bezier(.32,.72,0,1);
+  pointer-events:auto;
+  display:flex;align-items:center;gap:8px;
+}
+.toast.success{border-color:var(--green-border);color:var(--green)}
+.toast.error{border-color:#ef444430;color:var(--red)}
+.toast.info{border-color:#3b82f630;color:var(--blue)}
+
+/* ── SPINNER ── */
+.spin{
+  width:14px;height:14px;border:2px solid transparent;
+  border-top-color:currentColor;border-radius:50%;
+  animation:spinning .6s linear infinite;display:inline-block;flex-shrink:0;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spinning{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.blink{animation:pulse 1.4s ease-in-out infinite}
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <img src="/icons/logo.png" style="height:38px;width:auto;object-fit:contain;border-radius:8px">
+      <div class="logo-name" style="font-size:.85rem">GUDANG <span>SMS OTP</span></div>
+    </div>
+    <div class="balance-pill">
+      <div class="balance-dot"></div>
+      <span>Online</span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- BUY PANEL -->
+    <div class="panel active" id="panel-buy">
+      <div class="sec-head">
+        <div class="sec-title">Beli Nomor</div>
+        <div class="sec-sub">Pilih layanan & negara untuk cek harga</div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-row">
+          <div class="form-label">Layanan / Aplikasi</div>
+          <select class="form-select" id="serviceSelect" onchange="onSelectionChange()">
+            <option value="">⏳ Memuat...</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Negara</div>
+          <select class="form-select" id="countrySelect" onchange="onSelectionChange()">
+            <option value="">⏳ Memuat...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="price-result" id="priceCard">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="buy-wrap">
+        <button class="btn-buy" id="buyBtn" onclick="showQRIS()" disabled>
+          🛒 Beli &amp; Bayar Sekarang
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTIVE PANEL -->
+    <div class="panel" id="panel-active">
+      <div class="sec-head">
+        <div class="sec-title">Nomor Aktif</div>
+        <div class="sec-sub">Menunggu OTP masuk dari layanan</div>
+      </div>
+      <div class="active-wrap">
+        <div class="pull-refresh">
+          <button class="btn-refresh" onclick="loadActive()">🔄 Refresh</button>
+        </div>
+        <div id="activeList">
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">Belum ada nomor aktif</div>
+            <div class="empty-sub">Beli nomor di tab Beli untuk mulai menerima OTP</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY PANEL -->
+    <div class="panel" id="panel-history">
+      <div class="sec-head">
+        <div class="sec-title">Riwayat OTP</div>
+        <div class="sec-sub">Klik kode OTP untuk menyalin</div>
+      </div>
+      <div class="history-wrap">
+        <div class="history-actions">
+          <button class="btn-clear" onclick="clearHistory()">Hapus Semua</button>
+        </div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-buy" onclick="switchTab('buy')">
+      <span class="nav-icon"><img src="/icons/buy.png" style="width:24px;height:24px;object-fit:contain"></span>
+      <span>Beli</span>
+    </button>
+    <button class="nav-btn" id="nav-active" onclick="switchTab('active')">
+      <span class="nav-icon"><img src="/icons/active.png" style="width:24px;height:24px;object-fit:contain"></span>
+      <span>Aktif</span>
+      <span class="nav-badge hidden" id="activeCount">0</span>
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
+      <span class="nav-icon"><img src="/icons/history.png" style="width:24px;height:24px;object-fit:contain"></span>
+      <span>Riwayat</span>
+    </button>
+  </div>
+
+</div><!-- /screen -->
+
+<!-- QRIS MODAL SHEET -->
+<div class="modal-overlay hidden" id="qrisModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <div class="modal-title">Lanjutkan Pembayaran</div>
+      <div class="modal-sub" id="qrisModalSubtitle">Klik tombol di bawah untuk membayar</div>
+    </div>
+
+    <div class="amount-block" style="margin-top:20px">
+      <div>
+        <div class="amt-label">Total Bayar</div>
+        <div class="amt-value" id="qrisAmount">Rp 0</div>
+      </div>
+      <div class="expiry-block">
+        <div class="exp-label">Berlaku</div>
+        <div class="exp-val" id="qrisExpiry">10:00</div>
+      </div>
+    </div>
+
+    <div id="payLinkArea" style="margin:0 20px 16px">
+      <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
+        <span class="spin" style="display:block;margin:0 auto 10px"></span>Membuat payment link...
+      </div>
+    </div>
+
+    <div class="pay-steps">
+      <div class="pay-step"><div class="step-n">1</div>Klik tombol "Buka Halaman Bayar" di bawah</div>
+      <div class="pay-step"><div class="step-n">2</div>Pilih metode: Transfer, GoPay, OVO, dll</div>
+      <div class="pay-step"><div class="step-n">3</div>Selesaikan pembayaran — nomor aktif otomatis</div>
+    </div>
+
+    <div class="pay-status" id="payStatusMsg"></div>
+
+    <div class="modal-btns">
+      <button class="btn-modal-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn-modal-main" id="confirmPayBtn" onclick="manualCheckPayment()">
+        <img src="/icons/paid.png" style="width:18px;height:18px;object-fit:contain;vertical-align:middle"> Sudah Bayar?
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const API = '/api/herosms';
+let activeCards = {};
+let pollIntervals = {};
+let historyData = JSON.parse(localStorage.getItem('rumahotp_v3') || '[]');
+let pendingBuy = null;
+let qrisCountdown = null;
+
+// ─── API ─────────────────────────────────────────────────
+async function apiFetch(params, method='GET', body=null) {
+  const url = API + '?' + new URLSearchParams(params);
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+async function init() {
+  renderHistory();
+  await Promise.all([loadServices(), loadCountries()]);
+}
+
+async function loadServices() {
+  const sel = document.getElementById('serviceSelect');
+  try {
+    const d = await apiFetch({action:'services'});
+    sel.innerHTML = '<option value="">— Pilih Layanan —</option>';
+    let list = [];
+    if (Array.isArray(d)) list = d;
+    else if (typeof d === 'object') list = Object.entries(d).map(([k,v])=>({code:k,name:typeof v==='object'?(v.name||v.longName||k):k}));
+    if (list.length === 0) throw new Error('empty');
+    list.forEach(s => {
+      const code = s.code||s.service||s.id||s;
+      const name = s.name||s.longName||code;
+      const o = document.createElement('option');
+      o.value = code; o.textContent = name;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    sel.innerHTML = '<option value="">— Pilih Layanan —</option>';
+    [['wa','WhatsApp'],['tg','Telegram'],['ig','Instagram'],['fb','Facebook'],
+     ['tt','TikTok'],['go','Google'],['tw','Twitter/X'],['am','Amazon'],
+     ['pp','PayPal'],['vi','Viber'],['dc','Discord'],['ub','Uber']
+    ].forEach(([c,n])=>{ const o=document.createElement('option');o.value=c;o.textContent=n;sel.appendChild(o); });
+  }
+}
+
+async function loadCountries() {
+  const sel = document.getElementById('countrySelect');
+  try {
+    const d = await apiFetch({action:'countries'});
+    sel.innerHTML = '<option value="">— Pilih Negara —</option>';
+    let list = [];
+    if (Array.isArray(d)) list = d;
+    else if (typeof d === 'object') list = Object.entries(d).map(([k,v])=>({id:k,name:typeof v==='object'?(v.name||v.eng||k):v||k}));
+    if (list.length === 0) throw new Error('empty');
+    list.forEach(c => {
+      const id = c.id??c.code??c;
+      const name = c.name||c.eng||id;
+      const o = document.createElement('option');
+      o.value = id; o.textContent = name;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    sel.innerHTML = `
+      <option value="">— Pilih Negara —</option>
+      <option value="6">Indonesia 🇮🇩</option>
+      <option value="0">Russia 🇷🇺</option>
+      <option value="187">USA 🇺🇸</option>
+      <option value="22">Philippines 🇵🇭</option>
+      <option value="14">India 🇮🇳</option>
+      <option value="55">Malaysia 🇲🇾</option>
+      <option value="44">Thailand 🇹🇭</option>
+      <option value="132">Vietnam 🇻🇳</option>`;
+  }
+}
+
+// ─── PRICE CHECK ──────────────────────────────────────────
+let priceDebounce = null;
+
+async function onSelectionChange() {
+  const svc = document.getElementById('serviceSelect').value;
+  const cnt = document.getElementById('countrySelect').value;
+  const card = document.getElementById('priceCard');
+  const buyBtn = document.getElementById('buyBtn');
+
+  buyBtn.disabled = true;
+  card.classList.remove('show');
+
+  if (!svc || !cnt) return;
+
+  card.innerHTML = `<div class="price-loading"><span class="spin"></span> Mengecek harga...</div>`;
+  card.classList.add('show');
+
+  clearTimeout(priceDebounce);
+  priceDebounce = setTimeout(async () => {
+    try {
+      const d = await apiFetch({action:'prices', service:svc, country:cnt});
+      const priceIDR = d.idr || null;
+
+      const svcName = document.getElementById('serviceSelect').options[document.getElementById('serviceSelect').selectedIndex]?.text || svc;
+      const cntName = document.getElementById('countrySelect').options[document.getElementById('countrySelect').selectedIndex]?.text || cnt;
+
+      card.innerHTML = `
+        <div>
+          <div class="price-tag">Harga</div>
+          <div class="price-amount">${priceIDR ? 'Rp ' + priceIDR.toLocaleString('id-ID') : 'N/A'}</div>
+        </div>
+        <div class="price-info-right">
+          <div class="price-svc">${svcName}</div>
+          <div class="price-cnt">${cntName}</div>
+        </div>`;
+      card.classList.add('show');
+
+      if (priceIDR) {
+        buyBtn.disabled = false;
+        pendingBuy = {service: svc, country: cnt, svcName, cntName, priceIDR};
+      }
+    } catch(e) {
+      card.classList.remove('show');
+    }
+  }, 400);
+}
+
+// ─── QRIS MODAL ───────────────────────────────────────────
+let currentOrderId = null;
+let payPollInterval = null;
+
+async function showQRIS() {
+  if (!pendingBuy) return;
+  const priceIDR = pendingBuy.priceIDR;
+  const orderId = 'ROTP-' + Date.now();
+  currentOrderId = orderId;
+
+  document.getElementById('qrisAmount').textContent = 'Rp ' + priceIDR.toLocaleString('id-ID');
+  document.getElementById('qrisModalSubtitle').textContent = `${pendingBuy.svcName} · ${pendingBuy.cntName}`;
+  document.getElementById('payStatusMsg').textContent = '';
+  document.getElementById('payLinkArea').innerHTML = `
+    <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
+      <span class="spin" style="display:block;margin:0 auto 10px;width:22px;height:22px;border-color:#444;border-top-color:var(--accent2)"></span>
+      Membuat payment link...
+    </div>`;
+
+  document.getElementById('qrisModal').classList.remove('hidden');
+
+  try {
+    const r = await fetch('/api/payment?action=create', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ amount: priceIDR, orderId, description: `${pendingBuy.svcName} - ${pendingBuy.cntName}` })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    // Tampilkan tombol buka payment link
+    document.getElementById('payLinkArea').innerHTML = `
+      <a href="${d.paymentUrl}" target="_blank" rel="noopener"
+        style="display:flex;align-items:center;justify-content:center;gap:10px;
+               width:100%;padding:15px;border-radius:var(--r2);
+               background:linear-gradient(135deg,#0ea5e9,#3b82f6);
+               color:#fff;font-weight:700;font-size:.95rem;text-decoration:none;
+               box-shadow:0 4px 16px #3b82f640;">
+        <img src="/icons/link.png" style="width:20px;height:20px;object-fit:contain;vertical-align:middle"> Buka Halaman Bayar
+      </a>
+      <div style="text-align:center;font-size:.72rem;color:var(--text3);margin-top:10px">
+        Akan membuka tab baru · Kembali ke sini setelah bayar
+      </div>`;
+
+    startQRISCountdown(600);
+    startPaymentPolling(orderId);
+  } catch(e) {
+    document.getElementById('payLinkArea').innerHTML = `
+      <div style="background:#ef444414;border:1px solid #ef444430;border-radius:var(--r2);
+                  padding:14px;text-align:center;color:var(--red);font-size:.82rem">
+        ❌ ${e.message}
+      </div>`;
+    toast('Gagal buat payment link: ' + e.message, 'error');
+  }
+}
+
+function startQRISCountdown(totalSecs) {
+  let sisa = totalSecs;
+  clearInterval(qrisCountdown);
+  const el = document.getElementById('qrisExpiry');
+  el.textContent = formatSisa(sisa);
+  qrisCountdown = setInterval(() => {
+    sisa--;
+    el.textContent = formatSisa(sisa);
+    if (sisa <= 0) {
+      clearInterval(qrisCountdown);
+      clearInterval(payPollInterval);
+      closeModal();
+      toast('QR kadaluarsa, coba lagi', 'error');
+    }
+  }, 1000);
+}
+
+function startPaymentPolling(orderId) {
+  clearInterval(payPollInterval);
+  document.getElementById('payStatusMsg').textContent = '⏳ Menunggu pembayaran...';
+  payPollInterval = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/payment?action=status&order_id=${orderId}`);
+      const d = await r.json();
+      if (d.paid) {
+        clearInterval(payPollInterval);
+        clearInterval(qrisCountdown);
+        document.getElementById('payStatusMsg').textContent = '✅ Pembayaran diterima!';
+        setTimeout(() => afterPaymentSuccess(), 800);
+      }
+    } catch(e){}
+  }, 3000);
+}
+
+async function manualCheckPayment() {
+  if (!currentOrderId) return;
+  const btn = document.getElementById('confirmPayBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+  try {
+    const r = await fetch(`/api/payment?action=status&order_id=${currentOrderId}`);
+    const d = await r.json();
+    if (d.paid) {
+      clearInterval(payPollInterval);
+      clearInterval(qrisCountdown);
+      document.getElementById('payStatusMsg').textContent = '✅ Pembayaran diterima!';
+      setTimeout(() => afterPaymentSuccess(), 600);
+    } else {
+      document.getElementById('payStatusMsg').textContent = '⏳ Belum terbayar, coba lagi';
+    }
+  } catch(e) {
+    document.getElementById('payStatusMsg').textContent = 'Error cek status';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<img src="/icons/paid.png" style="width:18px;height:18px;object-fit:contain;vertical-align:middle"> Sudah Bayar?';
+}
+
+function formatSisa(s) {
+  const m = Math.floor(s/60), sec = s%60;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function closeModal() {
+  clearInterval(qrisCountdown);
+  clearInterval(payPollInterval);
+  document.getElementById('qrisModal').classList.add('hidden');
+}
+
+async function afterPaymentSuccess() {
+  closeModal();
+  const btn = document.getElementById('buyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Memproses...';
+  try {
+    const d = await apiFetch({action:'buy'}, 'POST', {
+      service: pendingBuy.service,
+      country: pendingBuy.country
+    });
+    if (d.error) {
+      toast('Gagal beli nomor: ' + d.error, 'error');
+    } else {
+      activeCards[d.activationId] = {
+        phone: d.phone,
+        service: pendingBuy.svcName,
+        country: pendingBuy.cntName,
+        status: 'waiting',
+        otp: null,
+        startTime: Date.now()
+      };
+      updateActiveCount();
+      toast('✅ Nomor berhasil dibeli!', 'success');
+      switchTab('active');
+      renderActive();
+      startPolling(d.activationId);
+    }
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Beli &amp; Bayar Sekarang';
+}
+
+// ─── POLLING OTP ──────────────────────────────────────────
+function startPolling(id) {
+  if (pollIntervals[id]) clearInterval(pollIntervals[id]);
+  pollIntervals[id] = setInterval(async () => {
+    if (!activeCards[id]) { clearInterval(pollIntervals[id]); return; }
+    try {
+      const d = await apiFetch({action:'sms', id});
+      const rawS = (d.status || '').toLowerCase();
+      d.status = rawS.includes('ok') || rawS.includes('receiv') ? 'received'
+               : rawS.includes('cancel') ? 'cancelled'
+               : 'waiting';
+      activeCards[id].status = d.status;
+      activeCards[id].otp = d.otp || null;
+      renderActive();
+      if (d.status === 'received') {
+        clearInterval(pollIntervals[id]);
+        toast('🎉 OTP diterima: ' + d.otp, 'success');
+        addHistory({ id, phone: activeCards[id].phone, service: activeCards[id].service, otp: d.otp, time: new Date().toLocaleString('id-ID') });
+      } else if (d.status === 'cancelled') {
+        clearInterval(pollIntervals[id]);
+      }
+    } catch(e){}
+  }, 5000);
+}
+
+// ─── ACTIVE TAB ───────────────────────────────────────────
+async function loadActive() {
+  try {
+    const d = await apiFetch({action:'active'});
+    if (d && typeof d === 'object' && !d.error && !d.status) {
+      let items = [];
+      if (Array.isArray(d)) {
+        items = d;
+      } else {
+        items = Object.entries(d).map(([k, v]) => ({
+          activationId: k,
+          ...( typeof v === 'object' && v !== null ? v : {} )
+        }));
+      }
+      items.forEach(item => {
+        const id = String(item.activationId || item.id || item.activation_id || '');
+        if (!id) return;
+        if (!activeCards[id]) {
+          const phone = item.phoneNumber || item.phone || item.number || item.phone_number || '';
+          const service = item.serviceName || item.service || item.serviceCode || item.service_name || item.serviceLong || '?';
+          const country = item.countryName || item.country || item.countryCode || item.country_name || String(item.countryId || '?');
+          activeCards[id] = { phone, service, country, status: 'waiting', otp: null, startTime: Date.now() };
+          startPolling(id);
+        }
+      });
+    }
+  } catch(e) { console.error('loadActive error:', e); }
+  renderActive();
+}
+
+function renderActive() {
+  const el = document.getElementById('activeList');
+  const ids = Object.keys(activeCards);
+  updateActiveCount();
+  if (ids.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">Belum ada nomor aktif</div>
+      <div class="empty-sub">Beli nomor di tab Beli untuk mulai menerima OTP</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = ids.map(id => {
+    const c = activeCards[id];
+    const elapsed = Math.floor((Date.now() - c.startTime) / 1000);
+    const mins = Math.floor(elapsed/60), secs = elapsed%60;
+    const timeStr = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    const rawStatus = (c.status || 'waiting').toLowerCase();
+    const status = rawStatus.includes('ok') || rawStatus.includes('receiv') ? 'received'
+                 : rawStatus.includes('cancel') ? 'cancelled'
+                 : 'waiting';
+    if (c.status !== status) c.status = status;
+    const chipClass = {received:'chip-received', cancelled:'chip-cancelled', waiting:'chip-waiting'}[status];
+    const chipLabel = {received:'✅ Diterima', cancelled:'❌ Dibatalkan', waiting:'⏳ Menunggu'}[status];
+    const svcLabel = (c.service && c.service !== '?') ? c.service : 'Layanan';
+    const cntLabel = (c.country && c.country !== '?') ? c.country : 'Negara';
+    const phoneDisp = c.phone ? '+' + c.phone : 'Memuat...';
+
+    return `
+    <div class="otp-card">
+      <div class="otp-card-head">
+        <div>
+          <div class="otp-svc">${svcLabel}</div>
+          <div class="otp-cnt">📍 ${cntLabel}</div>
+        </div>
+        <span class="status-chip ${chipClass}">${chipLabel}</span>
+      </div>
+      <div class="otp-card-body">
+        <div class="phone-block">
+          <div class="phone-num">${phoneDisp}</div>
+          ${c.phone ? `<button class="btn-copy-sm" onclick="copyText('${c.phone}')">Salin</button>` : ''}
+        </div>
+        <div class="otp-block">
+          ${c.otp
+            ? `<div class="otp-digits">${c.otp}</div><div class="otp-hint">Klik salin di bawah</div>`
+            : `<div class="otp-waiting-text blink">⏳ Menunggu kode OTP...</div>`}
+        </div>
+        ${c.otp ? `<button class="btn-copy-otp" onclick="copyText('${c.otp}')">📋 Salin OTP: ${c.otp}</button>` : ''}
+        <div class="otp-footer">
+          <div class="elapsed">⏱ ${timeStr}</div>
+          <div class="card-btns">
+            ${status==='waiting' ? `<button class="btn-action danger" onclick="cancelNumber('${id}')">Batalkan</button>` : ''}
+            ${status==='received' ? `<button class="btn-action success" onclick="confirmNumber('${id}')">Selesai</button>` : ''}
+            ${status!=='waiting' ? `<button class="btn-action" onclick="removeCard('${id}')">Hapus</button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cancelNumber(id) {
+  try { await apiFetch({action:'setstatus'}, 'POST', {id, status:8}); } catch(e){}
+  if (activeCards[id]) activeCards[id].status = 'cancelled';
+  clearInterval(pollIntervals[id]);
+  renderActive();
+  toast('Nomor dibatalkan', 'info');
+}
+
+async function confirmNumber(id) {
+  try { await apiFetch({action:'setstatus'}, 'POST', {id, status:6}); } catch(e){}
+  removeCard(id);
+}
+
+function removeCard(id) {
+  delete activeCards[id];
+  clearInterval(pollIntervals[id]);
+  renderActive();
+}
+
+function updateActiveCount() {
+  const n = Object.keys(activeCards).length;
+  const badge = document.getElementById('activeCount');
+  badge.textContent = n;
+  badge.classList.toggle('hidden', n === 0);
+}
+
+// ─── HISTORY ──────────────────────────────────────────────
+function addHistory(item) {
+  historyData.unshift(item);
+  if (historyData.length > 100) historyData = historyData.slice(0, 100);
+  localStorage.setItem('rumahotp_v3', JSON.stringify(historyData));
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (historyData.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🗂</div>
+      <div class="empty-title">Belum ada riwayat</div>
+      <div class="empty-sub">OTP yang berhasil diterima akan tersimpan di sini</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = historyData.map(h => `
+    <div class="history-card">
+      <div>
+        <div class="h-phone">+${h.phone}</div>
+        <div class="h-svc">${h.service}</div>
+      </div>
+      <div class="h-right">
+        <div class="h-otp" onclick="copyText('${h.otp}')" title="Klik salin">${h.otp}</div>
+        <div class="h-time">${h.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  if (!confirm('Hapus semua riwayat?')) return;
+  historyData = [];
+  localStorage.removeItem('rumahotp_v3');
+  renderHistory();
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function switchTab(name) {
+  ['buy','active','history'].forEach(n => {
+    document.getElementById(`panel-${n}`).classList.toggle('active', n===name);
+    document.getElementById(`nav-${n}`).classList.toggle('active', n===name);
+  });
+  if (name === 'active') { loadActive(); startTimerTick(); }
+}
+
+function startTimerTick() {
+  clearInterval(window._tick);
+  window._tick = setInterval(() => {
+    if (document.getElementById('panel-active').classList.contains('active')) renderActive();
+  }, 1000);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text)
+    .then(() => toast('✅ Disalin!', 'success'))
+    .catch(() => toast('Gagal menyalin', 'error'));
+}
+
+function toast(msg, type='info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+document.getElementById('qrisModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+init();
+</script>
+</body>
+</html>
