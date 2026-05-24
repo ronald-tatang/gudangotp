@@ -545,12 +545,12 @@ body::before{
 
     <div id="payLinkArea" style="margin:0 20px 16px">
       <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
-        <span class="spin" style="display:block;margin:0 auto 10px"></span>Membuat payment link...
+        <span class="spin" style="display:block;margin:0 auto 10px"></span>Memproses pembayaran...
       </div>
     </div>
 
     <div class="pay-steps">
-      <div class="pay-step"><div class="step-n">1</div>Klik tombol "Buka Halaman Bayar" di bawah</div>
+      <div class="pay-step"><div class="step-n">1</div>Klik tombol "Bayar Sekarang" di bawah</div>
       <div class="pay-step"><div class="step-n">2</div>Pilih metode: Transfer, GoPay, OVO, dll</div>
       <div class="pay-step"><div class="step-n">3</div>Selesaikan pembayaran — nomor aktif otomatis</div>
     </div>
@@ -709,7 +709,7 @@ async function showQRIS() {
   document.getElementById('payLinkArea').innerHTML = `
     <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
       <span class="spin" style="display:block;margin:0 auto 10px;width:22px;height:22px;border-color:#444;border-top-color:var(--accent2)"></span>
-      Membuat payment link...
+      Memproses pembayaran...
     </div>`;
 
   document.getElementById('qrisModal').classList.remove('hidden');
@@ -723,7 +723,7 @@ async function showQRIS() {
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    // Tampilkan tombol buka payment link
+    // Tampilkan tombol pembayaran Snap
     document.getElementById('payLinkArea').innerHTML = `
       <a href="${d.paymentUrl}" target="_blank" rel="noopener"
         style="display:flex;align-items:center;justify-content:center;gap:10px;
@@ -731,10 +731,10 @@ async function showQRIS() {
                background:linear-gradient(135deg,#0ea5e9,#3b82f6);
                color:#fff;font-weight:700;font-size:.95rem;text-decoration:none;
                box-shadow:0 4px 16px #3b82f640;">
-        <img src="/icons/link.png" style="width:20px;height:20px;object-fit:contain;vertical-align:middle"> Buka Halaman Bayar
+        <img src="/icons/link.png" style="width:20px;height:20px;object-fit:contain;vertical-align:middle"> Bayar Sekarang
       </a>
       <div style="text-align:center;font-size:.72rem;color:var(--text3);margin-top:10px">
-        Akan membuka tab baru · Kembali ke sini setelah bayar
+        Pilih GoPay, OVO, Transfer, atau QRIS di halaman berikut
       </div>`;
 
     startQRISCountdown(600);
@@ -745,7 +745,7 @@ async function showQRIS() {
                   padding:14px;text-align:center;color:var(--red);font-size:.82rem">
         ❌ ${e.message}
       </div>`;
-    toast('Gagal buat payment link: ' + e.message, 'error');
+    toast('Gagal memproses pembayaran: ' + e.message, 'error');
   }
 }
 
@@ -1071,3 +1071,4 @@ init();
 </script>
 </body>
 </html>
+
