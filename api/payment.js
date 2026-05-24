@@ -1,20 +1,11 @@
 const axios = require('axios');
 
-// ─────────────────────────────────────────────────────────────
-//  Midtrans SNAP API  (menggantikan Payment Link)
-//  Docs: https://docs.midtrans.com/reference/snap-api
-//
-//  Set environment variable di Vercel Dashboard:
-//    MIDTRANS_SERVER_KEY = Mid-server-xxxx
-// ─────────────────────────────────────────────────────────────
+// Midtrans SNAP API (menggantikan Payment Link)
+// Docs: https://docs.midtrans.com/reference/snap-api
 const SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
 
-// Gunakan sandbox untuk testing, production untuk live
-const SNAP_URL  = 'https://app.midtrans.com/snap/v1/transactions';       // production
-// const SNAP_URL = 'https://app.sandbox.midtrans.com/snap/v1/transactions'; // sandbox
-
-const STATUS_URL = 'https://api.midtrans.com/v2';       // production
-// const STATUS_URL = 'https://api.sandbox.midtrans.com/v2'; // sandbox
+const SNAP_URL   = 'https://app.midtrans.com/snap/v1/transactions'; // production
+const STATUS_URL = 'https://api.midtrans.com/v2';                   // production
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -46,7 +37,6 @@ module.exports = async (req, res) => {
           quantity: 1,
           name:     description || 'Nomor OTP',
         }],
-        // Hanya tampilkan e-wallet + VA — skip kartu kredit agar GoPay muncul duluan
         enabled_payments: [
           'gopay', 'shopeepay', 'dana', 'ovo', 'qris',
           'bca_va', 'bni_va', 'bri_va', 'other_va',
@@ -56,12 +46,12 @@ module.exports = async (req, res) => {
           duration: 10,
           unit: 'minutes',
         },
-        // Setelah bayar, Snap redirect ke sini → Flutter tangkap via onPageFinished
         callbacks: {
           finish: 'https://gudangotp.vercel.app/finish',
         },
       };
 
+      // Snap endpoint — bukan /v1/payment-links
       const { data } = await axios.post(SNAP_URL, payload, {
         headers: {
           'Authorization': `Basic ${auth}`,
@@ -69,10 +59,10 @@ module.exports = async (req, res) => {
         },
       });
 
-      // Snap return: { token: "...", redirect_url: "https://app.midtrans.com/snap/v4/..." }
+      // Snap return redirect_url → support deep link GoPay otomatis
       return res.json({
         orderId:    orderId,
-        paymentUrl: data.redirect_url,  // ← Snap URL, support deep link GoPay otomatis
+        paymentUrl: data.redirect_url, // https://app.midtrans.com/snap/v4/...
         token:      data.token,
         amount:     parseInt(amount),
       });
