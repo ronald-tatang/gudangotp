@@ -48,23 +48,23 @@ module.exports = async (req, res) => {
       if (!amount || amount < 5000)
         return res.status(400).json({ error: 'Minimal top up Rp5.000' });
 
-      const orderId = `TOPUP-${userId}-${Date.now()}`;
+      const orderId = `TOPUP-${userId.substring(0,12)}-${Date.now()}`;
       const auth = Buffer.from(SERVER_KEY + ':').toString('base64');
+      // Gunakan Snap API agar bisa dibuka di WebView dalam app
       const { data } = await axios.post(
-        `${BASE_URL}/v1/payment-links`,
+        'https://app.midtrans.com/snap/v1/transactions',
         {
           transaction_details: { order_id: orderId, gross_amount: parseInt(amount) },
           item_details: [{ id: 'topup', price: parseInt(amount), quantity: 1, name: 'Top Up Saldo VIRNOM' }],
           enabled_payments: ['credit_card','bca_va','bni_va','bri_va','other_va','gopay','shopeepay','dana','ovo','qris','indomaret','alfamart'],
-          customer_required: false,
-          expiry: { duration: 30, unit: 'minutes' },
-          usage_limit: 1,
+          expiry: { unit: 'minutes', duration: 30 },
           custom_field1: userId,
         },
         { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' } }
       );
+      const paymentUrl = `https://app.midtrans.com/snap/v2/vtweb/${data.token}`;
       await kv.set(`topup:${orderId}`, JSON.stringify({ userId, amount: parseInt(amount), status: 'pending' }), { ex: 3600 });
-      return res.json({ orderId: data.order_id, paymentUrl: data.payment_url, amount: parseInt(amount) });
+      return res.json({ orderId, paymentUrl, amount: parseInt(amount) });
     }
 
     if (action === 'topup_status') {
