@@ -1,10 +1,20 @@
 const axios = require('axios');
 
-// Midtrans Payment Link API
-// Docs: https://docs.midtrans.com/reference/create-payment-link
+// ─────────────────────────────────────────────────────────────
+//  Midtrans SNAP API  (menggantikan Payment Link)
+//  Docs: https://docs.midtrans.com/reference/snap-api
+//
+//  Set environment variable di Vercel Dashboard:
+//    MIDTRANS_SERVER_KEY = Mid-server-xxxx
+// ─────────────────────────────────────────────────────────────
 const SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
-const BASE_URL = 'https://api.midtrans.com'; // production
-// const BASE_URL = 'https://api.sandbox.midtrans.com'; // sandbox
+
+// Gunakan sandbox untuk testing, production untuk live
+const SNAP_URL  = 'https://app.midtrans.com/snap/v1/transactions';       // production
+// const SNAP_URL = 'https://app.sandbox.midtrans.com/snap/v1/transactions'; // sandbox
+
+const STATUS_URL = 'https://api.midtrans.com/v2';       // production
+// const STATUS_URL = 'https://api.sandbox.midtrans.com/v2'; // sandbox
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,10 +23,11 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query.action || 'create';
+  const auth   = Buffer.from(SERVER_KEY + ':').toString('base64');
 
   try {
 
-    // ── CREATE PAYMENT LINK ───────────────────────────────
+    // ── CREATE SNAP TRANSACTION ───────────────────────────
     if (action === 'create' && req.method === 'POST') {
       const { amount, orderId, description } = req.body || {};
 
@@ -24,49 +35,46 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'amount dan orderId wajib diisi' });
       }
 
-      const auth = Buffer.from(SERVER_KEY + ':').toString('base64');
-
-      // Midtrans Payment Link pakai endpoint /v1/payment-links
       const payload = {
         transaction_details: {
-          order_id: orderId,
-          gross_amount: parseInt(amount)
+          order_id:     orderId,
+          gross_amount: parseInt(amount),
         },
         item_details: [{
-          id: 'otp-number',
-          price: parseInt(amount),
+          id:       'otp-number',
+          price:    parseInt(amount),
           quantity: 1,
-          name: description || 'Nomor OTP'
+          name:     description || 'Nomor OTP',
         }],
-        // Aktifkan semua metode pembayaran populer
+        // Hanya tampilkan e-wallet + VA — skip kartu kredit agar GoPay muncul duluan
         enabled_payments: [
-          'credit_card', 'bca_va', 'bni_va', 'bri_va', 'other_va',
           'gopay', 'shopeepay', 'dana', 'ovo', 'qris',
-          'indomaret', 'alfamart'
+          'bca_va', 'bni_va', 'bri_va', 'other_va',
+          'indomaret', 'alfamart',
         ],
-        customer_required: false,
         expiry: {
           duration: 10,
-          unit: 'minutes'
+          unit: 'minutes',
         },
-        usage_limit: 1, // link hanya bisa dipakai 1x
+        // Setelah bayar, Snap redirect ke sini → Flutter tangkap via onPageFinished
+        callbacks: {
+          finish: 'https://gudangotp.vercel.app/finish',
+        },
       };
 
-      const { data } = await axios.post(
-        `${BASE_URL}/v1/payment-links`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Basic ${auth}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      const { data } = await axios.post(SNAP_URL, payload, {
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type':  'application/json',
+        },
+      });
 
+      // Snap return: { token: "...", redirect_url: "https://app.midtrans.com/snap/v4/..." }
       return res.json({
-        orderId: data.order_id,
-        paymentUrl: data.payment_url, // link yang dibuka user
-        amount: parseInt(amount),
+        orderId:    orderId,
+        paymentUrl: data.redirect_url,  // ← Snap URL, support deep link GoPay otomatis
+        token:      data.token,
+        amount:     parseInt(amount),
       });
     }
 
@@ -75,10 +83,9 @@ module.exports = async (req, res) => {
       const orderId = req.query.order_id;
       if (!orderId) return res.status(400).json({ error: 'order_id wajib' });
 
-      const auth = Buffer.from(SERVER_KEY + ':').toString('base64');
       const { data } = await axios.get(
-        `${BASE_URL}/v2/${orderId}/status`,
-        { headers: { 'Authorization': `Basic ${auth}` } }
+        `${STATUS_URL}/${orderId}/status`,
+        { headers: { 'Authorization': `Basic ${auth}` } },
       );
 
       const paid =
@@ -87,18 +94,19 @@ module.exports = async (req, res) => {
 
       return res.json({
         orderId: data.order_id,
-        status: data.transaction_status,
+        status:  data.transaction_status,
         paid,
-        amount: data.gross_amount
+        amount:  data.gross_amount,
       });
     }
 
     return res.status(404).json({ error: 'Action tidak dikenal' });
 
   } catch (e) {
-    const msg = e.response?.data?.error_messages?.[0]
-             || e.response?.data?.status_message
-             || e.message;
+    const msg =
+      e.response?.data?.error_messages?.[0] ||
+      e.response?.data?.status_message ||
+      e.message;
     return res.status(500).json({ error: msg });
   }
 };
