@@ -144,6 +144,51 @@ module.exports = async (req, res) => {
       const body = req.body || {};
       if (!body.service || !body.country)
         return res.status(400).json({ error: 'service dan country wajib diisi' });
+
+      const userId = req.headers['x-user-id'] || body.user_id;
+      const price = parseInt(body.price || 0);
+
+      if (userId && price > 0) {
+        const { Redis } = require('@upstash/redis');
+        const kv = new Redis({
+          url: process.env.KV_REST_API_URL,
+          token: process.env.KV_REST_API_TOKEN,
+        });
+
+        const balance = parseInt(await kv.get(`wallet:${userId}:balance`) || 0);
+        if (balance < price) {
+          return res.status(402).json({ error: 'Saldo tidak cukup', balance, required: price });
+        }
+
+        // Potong saldo
+        await kv.set(`wallet:${userId}:balance`, balance - price);
+        await kv.lpush(`wallet:${userId}:txs`, JSON.stringify({
+          type: 'deduct', amount: -price,
+          description: `Beli Nomor OTP (${body.service})`,
+          status: 'pending', createdAt: Date.now()
+        }));
+        await kv.ltrim(`wallet:${userId}:txs`, 0, 99);
+
+        // Beli nomor dari HeroSMS
+        const data = await heroCall({ action: 'getNumber', service: body.service, country: body.country });
+        if (typeof data === 'string' && data.startsWith('ACCESS_NUMBER')) {
+          const parts = data.split(':');
+          return res.json({ activationId: parts[1], phone: parts[2], balance: balance - price });
+        }
+
+        // Gagal → refund otomatis
+        const newBalance = parseInt(await kv.get(`wallet:${userId}:balance`) || 0);
+        await kv.set(`wallet:${userId}:balance`, newBalance + price);
+        await kv.lpush(`wallet:${userId}:txs`, JSON.stringify({
+          type: 'refund', amount: price,
+          description: `Refund Gagal Beli Nomor (${body.service})`,
+          status: 'success', createdAt: Date.now()
+        }));
+        await kv.ltrim(`wallet:${userId}:txs`, 0, 99);
+        return res.status(400).json({ error: data, refunded: true, balance: newBalance + price });
+      }
+
+      // Fallback tanpa wallet
       const data = await heroCall({ action: 'getNumber', service: body.service, country: body.country });
       if (typeof data === 'string' && data.startsWith('ACCESS_NUMBER')) {
         const parts = data.split(':');
