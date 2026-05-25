@@ -38,12 +38,12 @@ module.exports = async (req, res) => {
           name:     description || 'Nomor OTP',
         }],
         enabled_payments: [
-          'gopay', 'shopeepay', 'dana', 'ovo', 'qris',
+          'gopay', 'shopeepay', 'dana', 'ovo', 'other_qris',
           'bca_va', 'bni_va', 'bri_va', 'other_va',
           'indomaret', 'alfamart',
         ],
         expiry: {
-          duration: 10,
+          duration: 30,
           unit: 'minutes',
         },
         callbacks: {
