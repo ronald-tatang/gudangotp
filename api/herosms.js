@@ -5,7 +5,7 @@ const API_URL = 'https://hero-sms.com/stubs/handler_api.php';
 
 // 1 coin = Rp 27.000, margin flat Rp 3.000
 const COIN_TO_IDR = 27000;
-const MARGIN_FLAT = 3000;
+const MARGIN_FLAT = 1000;
 
 function coinToIDR(coin) {
   return Math.ceil(parseFloat(coin || 0) * COIN_TO_IDR) + MARGIN_FLAT;
