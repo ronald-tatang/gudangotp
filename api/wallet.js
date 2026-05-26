@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
         },
         { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' } }
       );
-      const paymentUrl = `https://app.midtrans.com/snap/v2/vtweb/${data.token}`;
+      const paymentUrl = `https://app.midtrans.com/snap/v4/vtweb/${data.token}`;
       await kv.set(`topup:${orderId}`, JSON.stringify({ userId, amount: parseInt(amount), status: 'pending' }), { ex: 3600 });
       return res.json({ orderId, paymentUrl, amount: parseInt(amount) });
     }
