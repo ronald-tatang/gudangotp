@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
       return res.json(DEFAULT_COUNTRIES);
     }
 
-    // ── ALL PRICES — coin → IDR + margin 30% ─────────────────
+    // ── ALL PRICES — coin → IDR + margin + sort ──────────────
     if (action === 'getPrices') {
       const params = { action: 'getPrices' };
       if (req.query.country) params.country = req.query.country;
@@ -104,7 +104,27 @@ module.exports = async (req, res) => {
         for (const [k, v] of Object.entries(obj)) out[k] = transformPrices(v);
         return out;
       }
-      return res.json(transformPrices(data));
+      const transformed = transformPrices(data);
+
+      // Sort: price_asc = terendah ke tertinggi, price_desc = tertinggi ke terendah
+      const sort = req.query.sort;
+      if (sort && typeof transformed === 'object' && !Array.isArray(transformed)) {
+        const rows = [];
+        for (const [svc, countries] of Object.entries(transformed)) {
+          if (typeof countries === 'object') {
+            for (const [cnt, val] of Object.entries(countries)) {
+              if (typeof val === 'object' && 'cost' in val) {
+                rows.push({ service: svc, country: cnt, ...val });
+              }
+            }
+          }
+        }
+        if (sort === 'price_asc') rows.sort((a, b) => (a.cost || 0) - (b.cost || 0));
+        if (sort === 'price_desc') rows.sort((a, b) => (b.cost || 0) - (a.cost || 0));
+        return res.json(rows);
+      }
+
+      return res.json(transformed);
     }
 
     // ── PRICES per service+country — return IDR + margin ─────
