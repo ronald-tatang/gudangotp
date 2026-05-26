@@ -9,7 +9,7 @@ const kv = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
-const CASHI_API_KEY = process.env.CASHI_API_KEY || 'sk_0997fef664559ef4b97403c4354414ad';
+const CASHI_API_KEY = process.env.CASHI_API_KEY || 'CASHI-CFXQ470IQH5';
 
 async function creditWallet(userId, orderId, amount) {
   const done = await kv.get(`topup:${orderId}:done`);
