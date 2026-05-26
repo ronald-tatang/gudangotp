@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Rumah OTP</title>
+<title>VIRNOM OTP</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -455,6 +455,14 @@ body::before{
             <option value="">⏳ Memuat...</option>
           </select>
         </div>
+        <div class="form-row">
+          <div class="form-label">Urutkan Harga</div>
+          <select class="form-select" id="sortSelect" onchange="onSortChange()">
+            <option value="">Default</option>
+            <option value="price_asc">Termurah → Termahal ↑</option>
+            <option value="price_desc">Termahal → Termurah ↓</option>
+          </select>
+        </div>
       </div>
 
       <div class="price-result" id="priceCard">
@@ -591,28 +599,82 @@ async function init() {
   await Promise.all([loadServices(), loadCountries()]);
 }
 
+let _allServices = []; // cache semua service
+
 async function loadServices() {
   const sel = document.getElementById('serviceSelect');
   try {
     const d = await apiFetch({action:'services'});
-    sel.innerHTML = '<option value="">— Pilih Layanan —</option>';
     let list = [];
     if (Array.isArray(d)) list = d;
     else if (typeof d === 'object') list = Object.entries(d).map(([k,v])=>({code:k,name:typeof v==='object'?(v.name||v.longName||k):k}));
     if (list.length === 0) throw new Error('empty');
-    list.forEach(s => {
-      const code = s.code||s.service||s.id||s;
-      const name = s.name||s.longName||code;
-      const o = document.createElement('option');
-      o.value = code; o.textContent = name;
-      sel.appendChild(o);
-    });
+    _allServices = list;
   } catch(e) {
-    sel.innerHTML = '<option value="">— Pilih Layanan —</option>';
-    [['wa','WhatsApp'],['tg','Telegram'],['ig','Instagram'],['fb','Facebook'],
-     ['tt','TikTok'],['go','Google'],['tw','Twitter/X'],['am','Amazon'],
-     ['pp','PayPal'],['vi','Viber'],['dc','Discord'],['ub','Uber']
-    ].forEach(([c,n])=>{ const o=document.createElement('option');o.value=c;o.textContent=n;sel.appendChild(o); });
+    _allServices = [
+      {code:'wa',name:'WhatsApp'},{code:'tg',name:'Telegram'},{code:'ig',name:'Instagram'},
+      {code:'fb',name:'Facebook'},{code:'tt',name:'TikTok'},{code:'go',name:'Google'},
+      {code:'tw',name:'Twitter/X'},{code:'am',name:'Amazon'},{code:'pp',name:'PayPal'},
+      {code:'vi',name:'Viber'},{code:'dc',name:'Discord'},{code:'ub',name:'Uber'}
+    ];
+  }
+  renderServices();
+}
+
+function renderServices() {
+  const sel = document.getElementById('serviceSelect');
+  const sort = document.getElementById('sortSelect')?.value || '';
+  let list = [..._allServices];
+  if (sort === 'price_asc') list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (sort === 'price_desc') list.sort((a,b) => (b.name||'').localeCompare(a.name||''));
+  const curVal = sel.value;
+  sel.innerHTML = '<option value="">— Pilih Layanan —</option>';
+  list.forEach(s => {
+    const code = s.code||s.service||s.id||s;
+    const name = s.name||s.longName||code;
+    const o = document.createElement('option');
+    o.value = code; o.textContent = name;
+    if (code === curVal) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+async function onSortChange() {
+  const sort = document.getElementById('sortSelect').value;
+  const cnt = document.getElementById('countrySelect').value;
+
+  if (sort && cnt) {
+    // Ambil harga dari backend lalu sort
+    const card = document.getElementById('priceCard');
+    card.innerHTML = '<div class="price-loading"><span class="spin"></span> Memuat harga...</div>';
+    card.classList.add('show');
+    try {
+      const d = await apiFetch({action:'getPrices', country: cnt, sort: sort});
+      if (Array.isArray(d) && d.length > 0) {
+        // Render tabel harga terurut
+        const rows = d.slice(0, 20).map(r => {
+          const name = _allServices.find(s => s.code === r.service)?.name || r.service;
+          return \`<tr style="border-bottom:1px solid var(--line)">
+            <td style="padding:8px 6px;font-size:13px">\${name}</td>
+            <td style="padding:8px 6px;font-size:13px;text-align:right;font-weight:700;color:var(--accent2)">Rp \${(r.cost||0).toLocaleString('id-ID')}</td>
+          </tr>\`;
+        }).join('');
+        card.innerHTML = \`<div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="padding:8px 6px;font-size:11px;color:var(--text3);text-align:left">LAYANAN</th>
+              <th style="padding:8px 6px;font-size:11px;color:var(--text3);text-align:right">HARGA</th>
+            </tr></thead>
+            <tbody>\${rows}</tbody>
+          </table>
+        </div>\`;
+        return;
+      }
+    } catch(e) {}
+    card.classList.remove('show');
+  } else {
+    renderServices();
+    onSelectionChange();
   }
 }
 
