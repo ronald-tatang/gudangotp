@@ -1,12 +1,15 @@
-const crypto = require('crypto');
+// api/webhook.js — Webhook CASHI.ID
+// Cashi.id mengirim notifikasi POST ke endpoint ini saat pembayaran berhasil.
+// Env: CASHI_API_KEY, KV_REST_API_URL, KV_REST_API_TOKEN
+
 const { Redis } = require('@upstash/redis');
 
 const kv = new Redis({
-  url:   process.env.KV_REST_API_URL,
+  url  : process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
 });
 
-const SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
+const CASHI_API_KEY = process.env.CASHI_API_KEY || 'sk_0997fef664559ef4b97403c4354414ad';
 
 async function creditWallet(userId, orderId, amount) {
   const done = await kv.get(`topup:${orderId}:done`);
@@ -15,7 +18,7 @@ async function creditWallet(userId, orderId, amount) {
   await kv.set(`wallet:${userId}:balance`, cur + amount);
   await kv.lpush(`wallet:${userId}:txs`, JSON.stringify({
     type: 'topup', orderId, amount,
-    description: 'Top Up Saldo via Midtrans',
+    description: 'Top Up Saldo via Cashi.id',
     status: 'success', createdAt: Date.now(),
   }));
   await kv.ltrim(`wallet:${userId}:txs`, 0, 99);
@@ -31,7 +34,7 @@ async function creditReseller(apiKey, orderId, amount) {
   await kv.set(`reseller:${apiKey}:balance`, cur + amount);
   await kv.lpush(`reseller:${apiKey}:txs`, JSON.stringify({
     type: 'topup', orderId, amount,
-    description: 'Top Up Saldo Reseller via Midtrans',
+    description: 'Top Up Saldo Reseller via Cashi.id',
     status: 'success', createdAt: Date.now(),
   }));
   await kv.ltrim(`reseller:${apiKey}:txs`, 0, 199);
@@ -45,32 +48,31 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    const notif = req.body;
-    const { order_id, status_code, gross_amount, signature_key } = notif;
+    // Verifikasi API key dari header webhook cashi.id
+    const incomingKey = req.headers['x-api-key'] || req.headers['x-cashi-key'] || '';
+    if (incomingKey !== CASHI_API_KEY)
+      return res.status(403).json({ error: 'Invalid API key' });
 
-    // Verifikasi signature Midtrans
-    const expected = crypto.createHash('sha512')
-      .update(`${order_id}${status_code}${gross_amount}${SERVER_KEY}`)
-      .digest('hex');
-    if (signature_key !== expected)
-      return res.status(403).json({ error: 'Invalid signature' });
+    const notif    = req.body;
+    const order_id = notif.order_id || notif.orderId || '';
+    const status   = (notif.status || '').toUpperCase();
+    const amount   = parseInt(notif.amount || 0);
 
-    const paid = notif.transaction_status === 'settlement' || notif.transaction_status === 'capture';
-    if (!paid) return res.json({ message: `Status ${notif.transaction_status}, skip` });
-
-    const amount = parseInt(gross_amount);
+    // Hanya proses jika status sukses
+    const paid = ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(status);
+    if (!paid) return res.json({ message: `Status ${notif.status}, skip` });
 
     // ── Top up reseller (order_id: RSL-xxx) ──────────────
     if (order_id.startsWith('RSL-')) {
-      const apiKey = notif.custom_field1;
-      if (!apiKey) return res.status(400).json({ error: 'apiKey tidak ditemukan di custom_field1' });
+      const apiKey = notif.custom_field1 || notif.customField1 || '';
+      if (!apiKey) return res.status(400).json({ error: 'apiKey tidak ditemukan' });
       const credited = await creditReseller(apiKey, order_id, amount);
       return res.json({ success: true, type: 'reseller', apiKey, amount, credited });
     }
 
     // ── Top up user biasa (order_id: TOPUP-xxx) ──────────
     if (order_id.startsWith('TOPUP-')) {
-      const userId = notif.custom_field1 || order_id.split('-')[1];
+      const userId = notif.custom_field1 || notif.customField1 || order_id.split('-')[1];
       if (!userId) return res.status(400).json({ error: 'userId tidak ditemukan' });
       const credited = await creditWallet(userId, order_id, amount);
       return res.json({ success: true, type: 'user', userId, amount, credited });
