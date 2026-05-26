@@ -640,7 +640,74 @@ function renderServices() {
 }
 
 function onSortChange() {
-  renderServices();
+  const sort = document.getElementById('sortSelect').value;
+  const svc = document.getElementById('serviceSelect').value;
+  if (sort && svc) {
+    sortCountriesByPrice(svc, sort);
+  } else {
+    renderServices();
+    onSelectionChange();
+  }
+}
+
+async function sortCountriesByPrice(svc, sort) {
+  const sel = document.getElementById('countrySelect');
+  const card = document.getElementById('priceCard');
+  const curVal = sel.value;
+
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">⏳ Memuat harga...</option>';
+
+  try {
+    const d = await apiFetch({action:'getPrices', service: svc, sort: sort});
+    const prices = {}; // country_id -> cost
+    if (Array.isArray(d)) {
+      d.forEach(r => { if (r.country) prices[r.country] = r.cost || 0; });
+    }
+
+    // Ambil list negara yang sudah ada, urutkan berdasarkan harga
+    const allOptions = Array.from(sel.options).filter(o => o.value !== '');
+    // Rebuild dari _allCountries jika ada, atau dari options yang sudah ada
+    let countries = [];
+    if (window._allCountries && window._allCountries.length > 0) {
+      countries = window._allCountries.map(c => ({
+        id: String(c.id ?? c.code ?? c),
+        name: c.name || c.eng || c.id,
+        cost: prices[String(c.id ?? c.code ?? c)] || null
+      }));
+    } else {
+      countries = allOptions.map(o => ({
+        id: o.value,
+        name: o.textContent.replace(/\s*Rp.*$/, '').trim(),
+        cost: prices[o.value] || null
+      }));
+    }
+
+    // Filter hanya yang ada harganya, sisanya taruh di belakang
+    const withPrice = countries.filter(c => c.cost);
+    const noPrice = countries.filter(c => !c.cost);
+
+    if (sort === 'price_asc') withPrice.sort((a,b) => a.cost - b.cost);
+    if (sort === 'price_desc') withPrice.sort((a,b) => b.cost - a.cost);
+
+    const sorted = [...withPrice, ...noPrice];
+
+    sel.innerHTML = '<option value="">— Pilih Negara —</option>';
+    sorted.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.cost
+        ? `${c.name} — Rp ${c.cost.toLocaleString('id-ID')}`
+        : c.name;
+      if (c.id === curVal) o.selected = true;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    // Kembalikan ke normal jika gagal
+    await loadCountries();
+  }
+
+  sel.disabled = false;
   onSelectionChange();
 }
 
@@ -653,6 +720,7 @@ async function loadCountries() {
     if (Array.isArray(d)) list = d;
     else if (typeof d === 'object') list = Object.entries(d).map(([k,v])=>({id:k,name:typeof v==='object'?(v.name||v.eng||k):v||k}));
     if (list.length === 0) throw new Error('empty');
+    window._allCountries = list; // cache untuk sort
     list.forEach(c => {
       const id = c.id??c.code??c;
       const name = c.name||c.eng||id;
