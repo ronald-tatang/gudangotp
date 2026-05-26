@@ -557,24 +557,15 @@ body::before{
       </div>
     </div>
 
-    <!-- Pilih metode -->
+    <!-- Cashi.id: QRIS Only -->
     <div id="metodePicker" style="margin:0 20px 16px">
-      <div style="font-size:.72rem;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:8px">VIRTUAL ACCOUNT</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        <button class="metode-btn" onclick="doTopupDoku('MANDIRI_VA')">Mandiri</button>
-        <button class="metode-btn" onclick="doTopupDoku('BCA_VA')">BCA</button>
-        <button class="metode-btn" onclick="doTopupDoku('BRI_VA')">BRI</button>
-        <button class="metode-btn" onclick="doTopupDoku('BNI_VA')">BNI</button>
-        <button class="metode-btn" onclick="doTopupDoku('PERMATA_VA')">Permata</button>
-      </div>
-      <div style="font-size:.72rem;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:8px">QRIS</div>
-      <button class="metode-btn" style="width:100%" onclick="doTopupDoku('QRIS')">📷 Scan QRIS</button>
+      <button class="metode-btn" style="width:100%;padding:14px;font-size:.92rem" onclick="doTopupCashi()">📷 Bayar dengan QRIS</button>
     </div>
 
     <div id="payLinkArea" style="margin:0 20px 16px;display:none"></div>
 
     <div class="pay-steps" id="paySteps" style="display:none">
-      <div class="pay-step"><div class="step-n">1</div>Salin nomor VA atau scan QR di atas</div>
+      <div class="pay-step"><div class="step-n">1</div>Scan QR menggunakan m-banking atau e-wallet</div>
       <div class="pay-step"><div class="step-n">2</div>Bayar via m-banking atau e-wallet</div>
       <div class="pay-step"><div class="step-n">3</div>Selesaikan pembayaran — nomor aktif otomatis</div>
     </div>
@@ -893,7 +884,7 @@ async function onSelectionChange() {
   }, 400);
 }
 
-// ─── DOKU PAYMENT ──────────────────────────────────────────
+// ─── CASHI.ID PAYMENT ─────────────────────────────────────
 let currentOrderId = null;
 let payPollInterval = null;
 
@@ -912,58 +903,51 @@ async function showQRIS() {
   document.getElementById('qrisModal').classList.remove('hidden');
 }
 
-async function doTopupDoku(channel) {
+async function doTopupCashi() {
   if (!pendingBuy) return;
   const priceIDR = pendingBuy.priceIDR;
   const orderId  = 'ROTP-' + Date.now();
   currentOrderId = orderId;
 
-  // Sembunyikan picker, tampilkan loading
   document.getElementById('metodePicker').style.display = 'none';
   const area = document.getElementById('payLinkArea');
   area.style.display = '';
   area.innerHTML = `
     <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
       <span class="spin" style="display:block;margin:0 auto 10px;width:22px;height:22px;border-color:#444;border-top-color:var(--accent2)"></span>
-      Membuat ${channel === 'QRIS' ? 'QRIS' : 'Virtual Account'}...
+      Membuat QRIS...
     </div>`;
 
   try {
-    const isQris  = channel === 'QRIS';
-    const action  = isQris ? 'create_qris' : 'create_va';
-    const body    = { amount: priceIDR, orderId, customerName: 'Pengguna', customerEmail: 'user@app.com' };
-    if (!isQris) body.channel = channel;
-
-    const r = await fetch(`/api/payment?action=${action}`, {
-      method: 'POST',
+    const body = { amount: priceIDR, order_id: orderId };
+    const r = await fetch('/api/payment?action=create_order', {
+      method : 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(body)
+      body   : JSON.stringify(body)
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    if (isQris) {
-      area.innerHTML = `
-        <div style="text-align:center">
-          ${d.qrUrl ? `<img src="${d.qrUrl}" style="width:180px;height:180px;border-radius:12px;border:1px solid var(--line)">` : ''}
-          <div style="font-size:.72rem;color:var(--text3);margin-top:8px">Scan QR dengan m-banking atau e-wallet Anda</div>
-          ${d.qrUrl ? `<a href="${d.qrUrl}" target="_blank" style="display:inline-block;margin-top:8px;font-size:.8rem;color:var(--accent2)">Buka QR di Browser</a>` : ''}
-        </div>`;
-    } else {
-      area.innerHTML = `
-        <div style="background:var(--card2);border-radius:var(--r2);padding:16px">
-          <div style="font-size:.7rem;color:var(--text3);font-weight:700;letter-spacing:1px">BANK ${d.bank}</div>
-          <div style="font-size:.72rem;color:var(--text3);margin-top:4px">Nomor Virtual Account</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-            <div style="font-size:1.3rem;font-weight:800;letter-spacing:2px;color:var(--text)" id="vaNumber">${d.vaNumber}</div>
-            <button onclick="copyVA()" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:.75rem;cursor:pointer">Salin</button>
-          </div>
-          ${d.expiredAt ? `<div style="font-size:.7rem;color:var(--text3);margin-top:6px">Berlaku s/d: ${d.expiredAt}</div>` : ''}
-        </div>`;
-    }
+    const qrUrl    = d.qr_url   || d.qrUrl    || '';
+    const qrString = d.qr_code  || d.qrString  || '';
+    const expiry   = d.expired_at || d.expiry || '';
+
+    area.innerHTML = `
+      <div style="text-align:center">
+        ${qrUrl
+          ? `<img src="${qrUrl}" style="width:200px;height:200px;border-radius:12px;border:2px solid var(--line)">`
+          : qrString
+            ? `<canvas id="qrCanvas" style="border-radius:12px"></canvas>`
+            : '<div style="color:var(--text3)">QR tidak tersedia</div>'
+        }
+        <div style="font-size:.72rem;color:var(--text3);margin-top:10px">
+          Scan dengan m-banking atau e-wallet apapun
+        </div>
+        ${expiry ? `<div style="font-size:.7rem;color:var(--amber);margin-top:4px">Berlaku s/d: ${expiry}</div>` : ''}
+      </div>`;
 
     document.getElementById('paySteps').style.display = '';
-    startQRISCountdown(3600);
+    startQRISCountdown(expiry ? Math.max(0, Math.floor((new Date(expiry) - Date.now()) / 1000)) : 3600);
     startPaymentPolling(orderId);
   } catch(e) {
     area.innerHTML = `
@@ -971,14 +955,8 @@ async function doTopupDoku(channel) {
                   padding:14px;text-align:center;color:var(--red);font-size:.82rem">
         ❌ ${e.message}
       </div>`;
-    toast('Gagal memproses pembayaran: ' + e.message, 'error');
+    toast('Gagal membuat QRIS: ' + e.message, 'error');
   }
-}
-
-function copyVA() {
-  const el = document.getElementById('vaNumber');
-  if (!el) return;
-  navigator.clipboard.writeText(el.textContent).then(() => toast('Nomor VA disalin ✓'));
 }
 
 function startQRISCountdown(totalSecs) {
