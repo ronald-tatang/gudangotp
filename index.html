@@ -377,6 +377,12 @@ body::before{
   font-size:.88rem;font-weight:700;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:6px;
 }
+.metode-btn{
+  padding:10px 14px;border-radius:10px;border:1px solid var(--line2);
+  background:var(--card2);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:.82rem;font-weight:600;cursor:pointer;
+}
+.metode-btn:hover{border-color:var(--accent2);color:var(--accent2)}
 
 /* ── TOAST ── */
 .toast-wrap{
@@ -551,15 +557,25 @@ body::before{
       </div>
     </div>
 
-    <div id="payLinkArea" style="margin:0 20px 16px">
-      <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
-        <span class="spin" style="display:block;margin:0 auto 10px"></span>Memproses pembayaran...
+    <!-- Pilih metode -->
+    <div id="metodePicker" style="margin:0 20px 16px">
+      <div style="font-size:.72rem;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:8px">VIRTUAL ACCOUNT</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <button class="metode-btn" onclick="doTopupDoku('MANDIRI_VA')">Mandiri</button>
+        <button class="metode-btn" onclick="doTopupDoku('BCA_VA')">BCA</button>
+        <button class="metode-btn" onclick="doTopupDoku('BRI_VA')">BRI</button>
+        <button class="metode-btn" onclick="doTopupDoku('BNI_VA')">BNI</button>
+        <button class="metode-btn" onclick="doTopupDoku('PERMATA_VA')">Permata</button>
       </div>
+      <div style="font-size:.72rem;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:8px">QRIS</div>
+      <button class="metode-btn" style="width:100%" onclick="doTopupDoku('QRIS')">📷 Scan QRIS</button>
     </div>
 
-    <div class="pay-steps">
-      <div class="pay-step"><div class="step-n">1</div>Klik tombol "Bayar Sekarang" di bawah</div>
-      <div class="pay-step"><div class="step-n">2</div>Pilih metode: Transfer, GoPay, OVO, dll</div>
+    <div id="payLinkArea" style="margin:0 20px 16px;display:none"></div>
+
+    <div class="pay-steps" id="paySteps" style="display:none">
+      <div class="pay-step"><div class="step-n">1</div>Salin nomor VA atau scan QR di atas</div>
+      <div class="pay-step"><div class="step-n">2</div>Bayar via m-banking atau e-wallet</div>
       <div class="pay-step"><div class="step-n">3</div>Selesaikan pembayaran — nomor aktif otomatis</div>
     </div>
 
@@ -877,60 +893,92 @@ async function onSelectionChange() {
   }, 400);
 }
 
-// ─── QRIS MODAL ───────────────────────────────────────────
+// ─── DOKU PAYMENT ──────────────────────────────────────────
 let currentOrderId = null;
 let payPollInterval = null;
 
 async function showQRIS() {
   if (!pendingBuy) return;
   const priceIDR = pendingBuy.priceIDR;
-  const orderId = 'ROTP-' + Date.now();
-  currentOrderId = orderId;
+  currentOrderId = null;
 
   document.getElementById('qrisAmount').textContent = 'Rp ' + priceIDR.toLocaleString('id-ID');
   document.getElementById('qrisModalSubtitle').textContent = `${pendingBuy.svcName} · ${pendingBuy.cntName}`;
   document.getElementById('payStatusMsg').textContent = '';
-  document.getElementById('payLinkArea').innerHTML = `
+  document.getElementById('metodePicker').style.display = '';
+  document.getElementById('payLinkArea').style.display = 'none';
+  document.getElementById('payLinkArea').innerHTML = '';
+  document.getElementById('paySteps').style.display = 'none';
+  document.getElementById('qrisModal').classList.remove('hidden');
+}
+
+async function doTopupDoku(channel) {
+  if (!pendingBuy) return;
+  const priceIDR = pendingBuy.priceIDR;
+  const orderId  = 'ROTP-' + Date.now();
+  currentOrderId = orderId;
+
+  // Sembunyikan picker, tampilkan loading
+  document.getElementById('metodePicker').style.display = 'none';
+  const area = document.getElementById('payLinkArea');
+  area.style.display = '';
+  area.innerHTML = `
     <div style="background:var(--card2);border-radius:var(--r2);padding:20px;text-align:center;color:var(--text3);font-size:.82rem">
       <span class="spin" style="display:block;margin:0 auto 10px;width:22px;height:22px;border-color:#444;border-top-color:var(--accent2)"></span>
-      Memproses pembayaran...
+      Membuat ${channel === 'QRIS' ? 'QRIS' : 'Virtual Account'}...
     </div>`;
 
-  document.getElementById('qrisModal').classList.remove('hidden');
-
   try {
-    const r = await fetch('/api/payment?action=create', {
+    const isQris  = channel === 'QRIS';
+    const action  = isQris ? 'create_qris' : 'create_va';
+    const body    = { amount: priceIDR, orderId, customerName: 'Pengguna', customerEmail: 'user@app.com' };
+    if (!isQris) body.channel = channel;
+
+    const r = await fetch(`/api/payment?action=${action}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ amount: priceIDR, orderId, description: `${pendingBuy.svcName} - ${pendingBuy.cntName}` })
+      body: JSON.stringify(body)
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    // Tampilkan tombol pembayaran Snap
-    document.getElementById('payLinkArea').innerHTML = `
-      <a href="${d.paymentUrl}" target="_blank" rel="noopener"
-        style="display:flex;align-items:center;justify-content:center;gap:10px;
-               width:100%;padding:15px;border-radius:var(--r2);
-               background:linear-gradient(135deg,#0ea5e9,#3b82f6);
-               color:#fff;font-weight:700;font-size:.95rem;text-decoration:none;
-               box-shadow:0 4px 16px #3b82f640;">
-        <img src="/icons/link.png" style="width:20px;height:20px;object-fit:contain;vertical-align:middle"> Bayar Sekarang
-      </a>
-      <div style="text-align:center;font-size:.72rem;color:var(--text3);margin-top:10px">
-        Pilih GoPay, OVO, Transfer, atau QRIS di halaman berikut
-      </div>`;
+    if (isQris) {
+      area.innerHTML = `
+        <div style="text-align:center">
+          ${d.qrUrl ? `<img src="${d.qrUrl}" style="width:180px;height:180px;border-radius:12px;border:1px solid var(--line)">` : ''}
+          <div style="font-size:.72rem;color:var(--text3);margin-top:8px">Scan QR dengan m-banking atau e-wallet Anda</div>
+          ${d.qrUrl ? `<a href="${d.qrUrl}" target="_blank" style="display:inline-block;margin-top:8px;font-size:.8rem;color:var(--accent2)">Buka QR di Browser</a>` : ''}
+        </div>`;
+    } else {
+      area.innerHTML = `
+        <div style="background:var(--card2);border-radius:var(--r2);padding:16px">
+          <div style="font-size:.7rem;color:var(--text3);font-weight:700;letter-spacing:1px">BANK ${d.bank}</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:4px">Nomor Virtual Account</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div style="font-size:1.3rem;font-weight:800;letter-spacing:2px;color:var(--text)" id="vaNumber">${d.vaNumber}</div>
+            <button onclick="copyVA()" style="background:var(--accent2);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:.75rem;cursor:pointer">Salin</button>
+          </div>
+          ${d.expiredAt ? `<div style="font-size:.7rem;color:var(--text3);margin-top:6px">Berlaku s/d: ${d.expiredAt}</div>` : ''}
+        </div>`;
+    }
 
-    startQRISCountdown(600);
+    document.getElementById('paySteps').style.display = '';
+    startQRISCountdown(3600);
     startPaymentPolling(orderId);
   } catch(e) {
-    document.getElementById('payLinkArea').innerHTML = `
+    area.innerHTML = `
       <div style="background:#ef444414;border:1px solid #ef444430;border-radius:var(--r2);
                   padding:14px;text-align:center;color:var(--red);font-size:.82rem">
         ❌ ${e.message}
       </div>`;
     toast('Gagal memproses pembayaran: ' + e.message, 'error');
   }
+}
+
+function copyVA() {
+  const el = document.getElementById('vaNumber');
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => toast('Nomor VA disalin ✓'));
 }
 
 function startQRISCountdown(totalSecs) {
