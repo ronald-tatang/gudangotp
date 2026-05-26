@@ -659,10 +659,19 @@ async function sortCountriesByPrice(svc, sort) {
   sel.innerHTML = '<option value="">⏳ Memuat harga...</option>';
 
   try {
-    const d = await apiFetch({action:'getPrices', service: svc, sort: sort});
+    // Format response: {country_id: {service: {cost, count}}}
+    const d = await apiFetch({action:'getPrices', service: svc});
     const prices = {}; // country_id -> cost
-    if (Array.isArray(d)) {
-      d.forEach(r => { if (r.country) prices[r.country] = r.cost || 0; });
+    if (d && typeof d === 'object' && !Array.isArray(d)) {
+      for (const [cntId, services] of Object.entries(d)) {
+        if (typeof services === 'object') {
+          // Ambil cost dari service pertama yang ada
+          const vals = Object.values(services);
+          if (vals.length > 0 && vals[0] && vals[0].cost) {
+            prices[String(cntId)] = vals[0].cost;
+          }
+        }
+      }
     }
 
     // Ambil list negara yang sudah ada, urutkan berdasarkan harga
