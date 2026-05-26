@@ -1,13 +1,32 @@
-const axios = require('axios');
+const axios  = require('axios');
+const crypto = require('crypto');
 const { Redis } = require('@upstash/redis');
 
 const kv = new Redis({
-  url: process.env.KV_REST_API_URL,
+  url  : process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
 });
 
-const SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
-const BASE_URL = 'https://api.midtrans.com';
+// ── DOKU ────────────────────────────────────────────────────
+const DOKU_CLIENT_ID  = process.env.DOKU_CLIENT_ID  || 'BRN-0237-1777463752367';
+const DOKU_SECRET_KEY = process.env.DOKU_SECRET_KEY || 'SK-wGd4nsgWHODTAyM8Yfow';
+const DOKU_BASE       = 'https://api.doku.com';
+
+function dokuSign(requestId, timestamp, body) {
+  const component = `${DOKU_CLIENT_ID}:${requestId}:${timestamp}:${body}`;
+  return 'HMACSHA256=' + crypto.createHmac('sha256', DOKU_SECRET_KEY).update(component).digest('base64');
+}
+function dokuHeaders(rid, ts, body) {
+  return {
+    'Content-Type'      : 'application/json',
+    'Client-Id'         : DOKU_CLIENT_ID,
+    'Request-Id'        : rid,
+    'Request-Timestamp' : ts,
+    'Signature'         : dokuSign(rid, ts, body),
+  };
+}
+function nowTs() { return new Date().toISOString().replace(/\.\d{3}Z$/, ''); }
+function rid()   { return crypto.randomBytes(16).toString('hex'); }
 
 async function getBalance(userId) {
   const bal = await kv.get(`wallet:${userId}:balance`);
@@ -44,48 +63,97 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'topup' && req.method === 'POST') {
-      const { amount } = req.body || {};
+      const { amount, channel, customerName, customerEmail } = req.body || {};
       if (!amount || amount < 5000)
         return res.status(400).json({ error: 'Minimal top up Rp5.000' });
 
-      const orderId = `TOPUP-${userId.substring(0,12)}-${Date.now()}`;
-      const auth = Buffer.from(SERVER_KEY + ':').toString('base64');
-      // Gunakan Snap API agar bisa dibuka di WebView dalam app
-      const { data } = await axios.post(
-        'https://app.midtrans.com/snap/v1/transactions',
-        {
-          transaction_details: { order_id: orderId, gross_amount: parseInt(amount) },
-          item_details: [{ id: 'topup', price: parseInt(amount), quantity: 1, name: 'Top Up Saldo VIRNOM' }],
-          enabled_payments: ['credit_card','bca_va','bni_va','bri_va','other_va','gopay','shopeepay','dana','ovo','qris','indomaret','alfamart'],
-          expiry: { unit: 'minutes', duration: 30 },
-          custom_field1: userId,
-        },
-        { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' } }
-      );
-      const paymentUrl = `https://app.midtrans.com/snap/v2/vtweb/${data.token}#/payment-list`
-      await kv.set(`topup:${orderId}`, JSON.stringify({ userId, amount: parseInt(amount), status: 'pending' }), { ex: 3600 });
-      return res.json({ orderId, paymentUrl, amount: parseInt(amount) });
+      const orderId = `TOPUP-${userId.substring(0, 12)}-${Date.now()}`;
+      const ch      = channel || 'MANDIRI_VA';
+      const isQris  = ch === 'QRIS';
+
+      const bodyMap = isQris
+        ? {
+            order: {
+              invoice_number: orderId,
+              line_items: [{ name: 'Top Up Saldo VIRNOM', price: parseInt(amount), quantity: 1 }],
+              amount  : parseInt(amount),
+              currency: 'IDR',
+            },
+            customer: {
+              name : customerName  || 'Pengguna VIRNOM',
+              email: customerEmail || 'user@virnom.app',
+            },
+            additional_info: { type: 'QR_CODE' },
+          }
+        : {
+            order: {
+              invoice_number: orderId,
+              line_items: [{ name: 'Top Up Saldo VIRNOM', price: parseInt(amount), quantity: 1 }],
+              amount    : parseInt(amount),
+              currency  : 'IDR',
+              session_id: orderId,
+            },
+            virtual_account_info: {
+              billing_type   : 'FIX_BILL',
+              expired_time   : 60,
+              reusable_status: false,
+              info1          : 'Top Up Saldo VIRNOM',
+            },
+            customer: {
+              name : customerName  || 'Pengguna VIRNOM',
+              email: customerEmail || 'user@virnom.app',
+            },
+          };
+
+      const bodyStr = JSON.stringify(bodyMap);
+      const r = rid(), ts = nowTs();
+      const endpoint = isQris
+        ? `${DOKU_BASE}/qris/v2/payment`
+        : `${DOKU_BASE}/virtual-accounts/${ch}/payment`;
+
+      const { data } = await axios.post(endpoint, bodyStr, { headers: dokuHeaders(r, ts, bodyStr) });
+
+      let responsePayload;
+      if (isQris) {
+        const qr = data.qr || {};
+        responsePayload = { orderId, qrString: qr.qr_string || '', qrUrl: qr.qr_url || '', amount: parseInt(amount), type: 'QRIS' };
+      } else {
+        const vaInfo = data.virtual_account_info || {};
+        responsePayload = { orderId, vaNumber: vaInfo.virtual_account_number || '', bank: ch.replace('_VA', ''), amount: parseInt(amount), expiredAt: vaInfo.expired_date || '', type: 'VA' };
+      }
+
+      await kv.set(`topup:${orderId}`, JSON.stringify({ userId, amount: parseInt(amount), status: 'pending' }), { ex: 7200 });
+      return res.json(responsePayload);
     }
 
     if (action === 'topup_status') {
       const orderId = req.query.order_id;
       if (!orderId) return res.status(400).json({ error: 'order_id wajib' });
-      const auth = Buffer.from(SERVER_KEY + ':').toString('base64');
-      const { data } = await axios.get(`${BASE_URL}/v2/${orderId}/status`,
-        { headers: { 'Authorization': `Basic ${auth}` } });
-      const paid = data.transaction_status === 'settlement' || data.transaction_status === 'capture';
+
+      const r = rid(), ts = nowTs();
+      const { data } = await axios.get(
+        `${DOKU_BASE}/orders/${orderId}/status`,
+        { headers: dokuHeaders(r, ts, '') }
+      );
+
+      const status = (data.transaction?.status || '').toUpperCase();
+      const paid   = status === 'SUCCESS';
+
       if (paid) {
         const done = await kv.get(`topup:${orderId}:done`);
         if (!done) {
-          const amount = parseInt(data.gross_amount);
-          const cur = await getBalance(userId);
+          const raw    = await kv.get(`topup:${orderId}`);
+          const record = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
+          const amount = record.amount || parseInt(data.order?.amount || 0);
+          const cur    = await getBalance(userId);
           await setBalance(userId, cur + amount);
           await addTransaction(userId, { type: 'topup', orderId, amount, description: 'Top Up Saldo', status: 'success' });
           await kv.set(`topup:${orderId}:done`, '1', { ex: 86400 * 30 });
         }
       }
+
       const balance = await getBalance(userId);
-      return res.json({ orderId, paid, status: data.transaction_status, amount: data.gross_amount, balance });
+      return res.json({ orderId, paid, status, amount: data.order?.amount, balance });
     }
 
     if (action === 'deduct' && req.method === 'POST') {
