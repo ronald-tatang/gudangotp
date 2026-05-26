@@ -780,11 +780,11 @@ async function sortCountriesByPrice(svc, sort) {
       sel.appendChild(o);
     });
 
-    // Restore pilihan sebelumnya jika ada, jangan auto-select ke negara lain
-    if (curVal) {
-      sel.value = curVal;
-      // Jika curVal tidak ditemukan di list baru, fallback ke placeholder
-      if (!sel.value) sel.value = '';
+    // Pilih negara teratas dari hasil sort (paling murah atau paling mahal)
+    // kecuali jika belum ada negara terpilih sebelumnya
+    if (sorted.length > 0 && (curVal || withPrice.length > 0)) {
+      // Selalu arahkan ke negara teratas sesuai urutan sort
+      sel.value = sorted[0].id;
     } else {
       sel.value = '';
     }
