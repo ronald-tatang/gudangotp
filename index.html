@@ -639,43 +639,9 @@ function renderServices() {
   });
 }
 
-async function onSortChange() {
-  const sort = document.getElementById('sortSelect').value;
-  const cnt = document.getElementById('countrySelect').value;
-
-  if (sort && cnt) {
-    // Ambil harga dari backend lalu sort
-    const card = document.getElementById('priceCard');
-    card.innerHTML = '<div class="price-loading"><span class="spin"></span> Memuat harga...</div>';
-    card.classList.add('show');
-    try {
-      const d = await apiFetch({action:'getPrices', country: cnt, sort: sort});
-      if (Array.isArray(d) && d.length > 0) {
-        // Render tabel harga terurut
-        const rows = d.slice(0, 20).map(r => {
-          const name = _allServices.find(s => s.code === r.service)?.name || r.service;
-          return \`<tr style="border-bottom:1px solid var(--line)">
-            <td style="padding:8px 6px;font-size:13px">\${name}</td>
-            <td style="padding:8px 6px;font-size:13px;text-align:right;font-weight:700;color:var(--accent2)">Rp \${(r.cost||0).toLocaleString('id-ID')}</td>
-          </tr>\`;
-        }).join('');
-        card.innerHTML = \`<div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr>
-              <th style="padding:8px 6px;font-size:11px;color:var(--text3);text-align:left">LAYANAN</th>
-              <th style="padding:8px 6px;font-size:11px;color:var(--text3);text-align:right">HARGA</th>
-            </tr></thead>
-            <tbody>\${rows}</tbody>
-          </table>
-        </div>\`;
-        return;
-      }
-    } catch(e) {}
-    card.classList.remove('show');
-  } else {
-    renderServices();
-    onSelectionChange();
-  }
+function onSortChange() {
+  renderServices();
+  onSelectionChange();
 }
 
 async function loadCountries() {
