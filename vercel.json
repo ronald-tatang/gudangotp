@@ -1,11 +1,12 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/api/herosms", "destination": "/api/herosms" },
-    { "source": "/api/payment", "destination": "/api/payment" },
-    { "source": "/api/qris", "destination": "/api/qris" },
-    { "source": "/api/wallet", "destination": "/api/wallet" },
-    { "source": "/api/webhook", "destination": "/api/webhook" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/herosms",  "destination": "/api/herosms" },
+    { "source": "/api/payment",  "destination": "/api/payment" },
+    { "source": "/api/qris",     "destination": "/api/qris" },
+    { "source": "/api/wallet",   "destination": "/api/wallet" },
+    { "source": "/api/webhook",  "destination": "/api/webhook" },
+    { "source": "/api/reseller", "destination": "/api/reseller" },
+    { "source": "/(.*)",         "destination": "/index.html" }
   ]
 }
