@@ -458,9 +458,9 @@ body::before{
         <div class="form-row">
           <div class="form-label">Urutkan Harga</div>
           <select class="form-select" id="sortSelect" onchange="onSortChange()">
-            <option value="">Default</option>
-            <option value="price_asc">Harga Terendah</option>
-            <option value="price_desc">Harga Tertinggi</option>
+            <option value="">— Default —</option>
+            <option value="price_asc">⬆ Harga Termurah</option>
+            <option value="price_desc">⬇ Harga Termahal</option>
           </select>
         </div>
       </div>
@@ -621,19 +621,34 @@ async function loadServices() {
   renderServices();
 }
 
-function renderServices() {
+function renderServices(priceMap = null) {
   const sel = document.getElementById('serviceSelect');
   const sort = document.getElementById('sortSelect')?.value || '';
   let list = [..._allServices];
-  if (sort === 'price_asc') list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-  if (sort === 'price_desc') list.sort((a,b) => (b.name||'').localeCompare(a.name||''));
+
+  if (priceMap && (sort === 'price_asc' || sort === 'price_desc')) {
+    // Lampirkan harga nyata ke tiap service lalu sort
+    list = list.map(s => {
+      const code = s.code||s.service||s.id||s;
+      return { ...s, _price: priceMap[code] || null };
+    });
+    const withPrice = list.filter(s => s._price !== null);
+    const noPrice   = list.filter(s => s._price === null);
+    if (sort === 'price_asc')  withPrice.sort((a,b) => a._price - b._price);
+    if (sort === 'price_desc') withPrice.sort((a,b) => b._price - a._price);
+    list = [...withPrice, ...noPrice];
+  }
+
   const curVal = sel.value;
   sel.innerHTML = '<option value="">— Pilih Layanan —</option>';
   list.forEach(s => {
     const code = s.code||s.service||s.id||s;
     const name = s.name||s.longName||code;
     const o = document.createElement('option');
-    o.value = code; o.textContent = name;
+    o.value = code;
+    o.textContent = (priceMap && s._price)
+      ? `${name} — Rp ${s._price.toLocaleString('id-ID')}`
+      : name;
     if (code === curVal) o.selected = true;
     sel.appendChild(o);
   });
@@ -641,13 +656,67 @@ function renderServices() {
 
 function onSortChange() {
   const sort = document.getElementById('sortSelect').value;
-  const svc = document.getElementById('serviceSelect').value;
-  if (sort && svc) {
+  const svc  = document.getElementById('serviceSelect').value;
+  const cnt  = document.getElementById('countrySelect').value;
+
+  if (!sort) {
+    // Reset ke default
+    renderServices();
+    if (svc && cnt) onSelectionChange();
+    return;
+  }
+
+  if (svc) {
+    // Layanan sudah dipilih → sort negara berdasarkan harga
     sortCountriesByPrice(svc, sort);
+  } else if (cnt) {
+    // Negara sudah dipilih → fetch harga semua layanan untuk negara itu, sort layanan
+    sortServicesByPrice(cnt, sort);
   } else {
+    // Belum pilih apa pun
     renderServices();
     onSelectionChange();
   }
+}
+
+async function sortServicesByPrice(cnt, sort) {
+  const sel    = document.getElementById('serviceSelect');
+  const curVal = sel.value;
+
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">⏳ Memuat harga layanan...</option>';
+
+  try {
+    // Fetch harga semua layanan untuk negara yang dipilih
+    const d = await apiFetch({ action: 'getPrices', country: cnt });
+    const priceMap = {}; // service_code -> cost
+
+    if (d && typeof d === 'object' && !Array.isArray(d)) {
+      for (const [key, val] of Object.entries(d)) {
+        if (typeof val === 'object' && val !== null) {
+          if (typeof val.cost === 'number') {
+            // Format: { service_code: { cost, count } }
+            priceMap[key] = val.cost;
+          } else {
+            // Format: { country_id: { service_code: { cost, count } } }
+            for (const [svcCode, svcVal] of Object.entries(val)) {
+              if (svcVal && typeof svcVal.cost === 'number') {
+                priceMap[svcCode] = svcVal.cost;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    renderServices(priceMap);
+    sel.value = curVal;
+  } catch(e) {
+    renderServices();
+  }
+
+  sel.disabled = false;
+  onSelectionChange();
 }
 
 async function sortCountriesByPrice(svc, sort) {
