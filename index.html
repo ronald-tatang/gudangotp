@@ -730,14 +730,16 @@ async function sortCountriesByPrice(svc, sort) {
   try {
     // Format response: {country_id: {service: {cost, count}}}
     const d = await apiFetch({action:'getPrices', service: svc});
-    const prices = {}; // country_id -> cost
+    const prices = {}; // country_id -> cost (IDR)
     if (d && typeof d === 'object' && !Array.isArray(d)) {
       for (const [cntId, services] of Object.entries(d)) {
-        if (typeof services === 'object') {
-          // Ambil cost dari service pertama yang ada
-          const vals = Object.values(services);
-          if (vals.length > 0 && vals[0] && vals[0].cost) {
-            prices[String(cntId)] = vals[0].cost;
+        if (typeof services === 'object' && services !== null) {
+          // Format: { country_id: { service_code: { cost, count } } }
+          for (const svcVal of Object.values(services)) {
+            if (svcVal && typeof svcVal === 'object' && typeof svcVal.cost === 'number') {
+              prices[String(cntId)] = svcVal.cost;
+              break; // ambil harga pertama yang valid
+            }
           }
         }
       }
