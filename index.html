@@ -777,9 +777,17 @@ async function sortCountriesByPrice(svc, sort) {
       o.textContent = c.cost
         ? `${c.name} — Rp ${c.cost.toLocaleString('id-ID')}`
         : c.name;
-      if (c.id === curVal) o.selected = true;
       sel.appendChild(o);
     });
+
+    // Restore pilihan sebelumnya jika ada, jangan auto-select ke negara lain
+    if (curVal) {
+      sel.value = curVal;
+      // Jika curVal tidak ditemukan di list baru, fallback ke placeholder
+      if (!sel.value) sel.value = '';
+    } else {
+      sel.value = '';
+    }
   } catch(e) {
     // Kembalikan ke normal jika gagal
     await loadCountries();
