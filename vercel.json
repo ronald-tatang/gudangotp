@@ -6,7 +6,6 @@
     { "source": "/api/qris",     "destination": "/api/qris" },
     { "source": "/api/wallet",   "destination": "/api/wallet" },
     { "source": "/api/webhook",  "destination": "/api/webhook" },
-    { "source": "/api/reseller", "destination": "/api/reseller" },
     { "source": "/(.*)",         "destination": "/index.html" }
   ]
 }
